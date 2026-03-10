@@ -7,6 +7,13 @@ Run [Progento](https://github.com/stefano-edgible/Progento) by pulling pre-built
 - **Docker** and **Docker Compose** (v2)
 - Optional: **Ollama** and/or **embedding service** on the host (e.g. GPU); otherwise they run in Docker
 
+**Suggested minimum hardware (full stack in Docker)**
+
+- **RAM:** 8 GB minimum; **16 GB** recommended. Containers (Ollama, embedding, Weaviate, Postgres, API, UI) can use ~10 GB in total; extra headroom avoids OOM.
+- **Disk (for Docker images and overlay):** At least **25–30 GB** free on the partition where Docker stores data (e.g. root or `/var/lib/docker`). Large images include Ollama and the embedding model. If you see “no space left on device” during `docker compose pull`, free space or resize the volume.
+- **Disk (for data):** At least **10 GB** for `volumes/` (repos, knowledge base, Weaviate, Postgres, Ollama models). Use a dedicated disk (e.g. EBS at `/data`) and set `PROGENTO_DATA_ROOT=/data` for production.
+- **CPU:** 2+ cores; 4+ recommended if Ollama and embedding run in Docker (no GPU).
+
 ## Quick start
 
 1. **Clone this repo**
