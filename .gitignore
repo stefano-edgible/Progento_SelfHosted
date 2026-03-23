@@ -1,4 +1,15 @@
+# Local secrets and overrides (never commit)
 .env
-# Local KBase bind list + generated compose fragment (paths are machine-specific)
+.env.local
+.env.*.local
+!.env.example
+
+# KBase bind list + generated compose merge file (host paths are machine-specific)
 kbase.volumes
 docker-compose.kbase.generated.yml
+
+# Optional: GHCR / registry tokens if stored in-repo by mistake
+*.PAT
+
+# OS / editor noise
+.DS_Store
