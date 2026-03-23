@@ -77,6 +77,8 @@ services:
     image: postgres:15
     container_name: progento-postgres
     entrypoint: ["/usr/local/bin/postgres-entrypoint-wrapper.sh"]
+    # Required when entrypoint is overridden (otherwise image CMD is dropped and postgres exits immediately)
+    command: ["postgres"]
     volumes:
       - ${PROGENTO_DATA_ROOT:-.}/volumes/postgres_data:/var/lib/postgresql/data
       - ./scripts/db/postgres-entrypoint-wrapper.sh:/usr/local/bin/postgres-entrypoint-wrapper.sh:ro
