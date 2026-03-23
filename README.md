@@ -2,6 +2,8 @@
 
 Run [Progento](https://github.com/stefano-edgible/Progento) by pulling pre-built images—no build required.
 
+**Platforms:** The same setup works on **Linux** (e.g. EC2) and **macOS** (Docker Desktop). On Linux, `sudo ./setup-volumes.sh` sets correct ownership for Postgres data; `chmod 777` on bind-mounted dirs helps when UIDs don’t match the host. On macOS, a **Postgres entrypoint wrapper** (`scripts/db/postgres-entrypoint-wrapper.sh`) fixes permissions inside the container before Postgres starts. Use **`PROGENTO_IMAGE_TAG=latest-arm64`** on Apple Silicon if you only use arm64-built images (see **Images** below).
+
 ## Prerequisites
 
 - **Docker** and **Docker Compose** (v2)
@@ -30,8 +32,8 @@ Run [Progento](https://github.com/stefano-edgible/Progento) by pulling pre-built
 
 3. **Create volume dirs and start (all services in Docker)**
    ```bash
-   chmod +x *.sh
-   ./setup-volumes.sh
+   chmod +x *.sh scripts/db/*.sh
+   sudo ./setup-volumes.sh   # so Postgres (UID 999) can use the data dir on Linux; safe on macOS too
    ./start.sh
    ```
 
@@ -41,7 +43,7 @@ Run [Progento](https://github.com/stefano-edgible/Progento) by pulling pre-built
 
 | Script | Description |
 |--------|-------------|
-| `setup-volumes.sh` | Create volume directories (run once, or when using a new data root) |
+| `setup-volumes.sh` | Create `volumes/*` under `PROGENTO_DATA_ROOT`. Run with **`sudo`** so Postgres can write; run once or after `rm -rf volumes`. |
 | `start.sh` | Start full stack (Ollama + embedding + Weaviate + Postgres + API + UI) in Docker |
 | `start-external-ollama.sh` | Same but **Ollama runs on the host** (e.g. native install for GPU). Set `OLLAMA_URL` in `.env` (e.g. `http://host.docker.internal:11434`) |
 | `start-external-embedding.sh` | Same but **embedding service runs on the host** (e.g. GPU). Set `EMBEDDING_SERVICE_URL` in `.env` (e.g. `http://host.docker.internal:8002`) |
@@ -59,9 +61,11 @@ Run [Progento](https://github.com/stefano-edgible/Progento) by pulling pre-built
 
 ## Data
 
-By default, data is stored under `./volumes/` (or `PROGENTO_DATA_ROOT` from `.env`). Use a dedicated path (e.g. `/data`) on a server with a data disk.
+By default, data is stored under `./volumes/` (or `PROGENTO_DATA_ROOT` from `.env`). Use a dedicated path (e.g. `/data` on EC2) and set `PROGENTO_DATA_ROOT=/data` in `.env`; run **`sudo ./setup-volumes.sh`** from the repo so it creates `/data/volumes/...` with usable permissions.
 
 ## Images
 
 Images are pulled from **GitHub Container Registry** (`ghcr.io/stefano-edgible/progento-*`). Ensure `GHCR_OWNER` in `.env` matches (default: `stefano-edgible`).
+
+**Apple Silicon:** default images are tagged `latest` (amd64). If you build/push with `DOCKER_PLATFORM=linux/arm64` from the Progento repo (`registry/build-push.sh`), set **`PROGENTO_IMAGE_TAG=latest-arm64`** in `.env` before `docker compose pull`.
 

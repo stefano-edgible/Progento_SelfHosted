@@ -25,7 +25,7 @@ services:
       - progento-network
 
   embedding:
-    image: ghcr.io/${GHCR_OWNER:-stefano-edgible}/progento-embedding:latest
+    image: ghcr.io/${GHCR_OWNER:-stefano-edgible}/progento-embedding:${PROGENTO_IMAGE_TAG:-latest}
     container_name: progento-embedding
     ports:
       - "8002:8002"
@@ -76,8 +76,10 @@ services:
   postgres:
     image: postgres:15
     container_name: progento-postgres
+    entrypoint: ["/usr/local/bin/postgres-entrypoint-wrapper.sh"]
     volumes:
       - ${PROGENTO_DATA_ROOT:-.}/volumes/postgres_data:/var/lib/postgresql/data
+      - ./scripts/db/postgres-entrypoint-wrapper.sh:/usr/local/bin/postgres-entrypoint-wrapper.sh:ro
     environment:
       - POSTGRES_DB=progento
       - POSTGRES_USER=postgres
@@ -98,7 +100,7 @@ services:
       - progento-network
 
   api:
-    image: ghcr.io/${GHCR_OWNER:-stefano-edgible}/progento-api:latest
+    image: ghcr.io/${GHCR_OWNER:-stefano-edgible}/progento-api:${PROGENTO_IMAGE_TAG:-latest}
     container_name: progento-api
     ports:
       - "8001:8000"
@@ -145,7 +147,7 @@ services:
       - progento-network
 
   ui:
-    image: ghcr.io/${GHCR_OWNER:-stefano-edgible}/progento-ui:latest
+    image: ghcr.io/${GHCR_OWNER:-stefano-edgible}/progento-ui:${PROGENTO_IMAGE_TAG:-latest}
     container_name: progento-ui
     ports:
       - "3001:80"
