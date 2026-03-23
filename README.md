@@ -43,6 +43,33 @@ Run [Progento](https://github.com/stefano-edgible/Progento) by pulling pre-built
 
 4. **Open the app** at **http://localhost:3001** (or your host IP).
 
+5. **Finish setup (required to query):** load Ollama models and configure a KBase — see **[After installation: models and KBase](#after-installation-models-and-kbase)** below.
+
+## After installation: models and KBase
+
+Pre-built images **do not** include Ollama LLM weights, and **no documents are indexed** until you scan. After `start.sh` (or `start-external-ollama.sh`, etc.), do the following.
+
+### 1) Load Ollama LLM models
+
+Pull at least one model into the **same** Ollama instance the API uses (`OLLAMA_URL` in `.env`).
+
+| How you run Ollama | Example: pull `phi` |
+|--------------------|---------------------|
+| **In Docker** (default `./start.sh` — service `ollama`, container **`progento-ollama`**) | `docker exec -it progento-ollama ollama pull phi` |
+| **From the compose project directory** (alternative) | `docker compose exec ollama ollama pull phi` |
+| **On the host** (`./start-external-ollama.sh`, with `OLLAMA_URL=http://host.docker.internal:11434` on macOS/Windows, or your host LAN IP on Linux) | On the host: `ollama pull phi` |
+| **Remote URL** (`OLLAMA_URL=https://…`) | Pull on that server or follow the provider’s docs; set **`OLLAMA_API_KEY`** in `.env` if required |
+
+Use any name from the [Ollama library](https://ollama.com/library); align with **`OLLAMA_MODEL`** in `.env` if you set a default. Check **`GET http://localhost:8001/api/health/ollama`** (or your API port) — `models` should list the tags you pulled.
+
+### 2) Set up a KBase
+
+1. **Bind-mount content** the API can read: copy **`kbase.volumes.example`** → **`kbase.volumes`** and add lines `host_path:/kbase/your_name:ro` (see **[KBase bind mounts](#kbase-bind-mounts-one-list-for-every-compose-scenario)** above). Restart the stack so the generated compose includes those mounts.
+2. In the UI (**Repositories**), **Add repository** with path **`/kbase/your_name`** (matching the container path).
+3. **Scan** the repository and wait for it to finish.
+
+Without mounted paths + scan, queries have no indexed context. Optional: also add repos under **`volumes/code_repos`** if your compose exposes them at a known in-container path.
+
 ## Scripts
 
 | Script | Description |
