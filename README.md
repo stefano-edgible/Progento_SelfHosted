@@ -34,7 +34,7 @@ Run [Progento](https://github.com/stefano-edgible/Progento) by pulling pre-built
 
 3. **Create volume dirs and start (all services in Docker)**
    ```bash
-   chmod +x *.sh scripts/gen-kbase-compose.sh
+   chmod +x *.sh
    chmod +x scripts/db/postgres-entrypoint-wrapper.sh
    sudo ./setup-volumes.sh
    ./start.sh
@@ -82,22 +82,17 @@ You may have several compose files (`docker-compose.yml`, `docker-compose.extern
    ```text
    /absolute/path/on/host:/kbase/my_docs:ro
    ```
-3. Generate the merge file:
-   ```bash
-   chmod +x scripts/gen-kbase-compose.sh
-   ./scripts/gen-kbase-compose.sh
-   ```
-   This writes **`docker-compose.kbase.generated.yml`** (gitignored).
 
-4. Start as usual: **`./start.sh`** or **`./start-external-ollama.sh`** (etc.). Those scripts **`source scripts/progento-compose.sh`** and, if the generated file exists, run:
+3. Start as usual: **`./start.sh`** or **`./start-external-ollama.sh`** (etc.). Each script **`source`s `scripts/progento-compose.sh`**, which **runs `gen-kbase-compose.sh` first** (so you do **not** need to run the generator by hand after every edit). That writes **`docker-compose.kbase.generated.yml`** (gitignored) when **`kbase.volumes`** exists and has valid lines, then runs:
    ```bash
    docker compose -f <scenario>.yml -f docker-compose.kbase.generated.yml ...
    ```
-   Docker Compose **merges** `api.volumes` from both files, so KBase mounts apply to **every** scenario.
+   when the generated file exists. Docker Compose **merges** `api.volumes` from both files.
 
-5. In the Progento UI, add a repository whose path is **`/kbase/my_docs`** (or whatever suffix you used), then scan.
+4. In the Progento UI, add a repository whose path is **`/kbase/my_docs`** (or whatever suffix you used), then scan.
 
-- No **`kbase.volumes`** file → no extra fragment; behaviour unchanged.
+- No **`kbase.volumes`** file → generator removes any stale **`docker-compose.kbase.generated.yml`**; behaviour matches stock compose.
+- To regenerate without starting the stack: **`./scripts/gen-kbase-compose.sh`**
 - Env **`KBASE_VOLUMES_FILE`** points to an alternate list path for **`gen-kbase-compose.sh`**.
 
 ## PostgreSQL schema (no SQL bootstrap in this repo)
