@@ -4,7 +4,7 @@ Run [Progento](https://github.com/stefano-edgible/Progento) by pulling pre-built
 
 **Platforms:** The same setup works on **Linux** (e.g. EC2) and **macOS** (Docker Desktop). On Linux, `sudo ./setup-volumes.sh` sets correct ownership for Postgres data; `chmod 777` on bind-mounted dirs helps when UIDs don’t match the host. On macOS, a **Postgres entrypoint wrapper** (`scripts/db/postgres-entrypoint-wrapper.sh`) fixes permissions inside the container before Postgres starts.
 
-**GHCR images (api / ui / embedding):** Compose sets **`platform: linux/amd64`** by default so **Apple Silicon can pull `:latest`** (amd64-only manifests) and run via emulation. For **native arm64** images you pushed as `latest-arm64`, set in `.env`: **`PROGENTO_IMAGE_TAG=latest-arm64`** and **`PROGENTO_DOCKER_PLATFORM=linux/arm64`** (see **Images** below).
+**GHCR images (api / ui / embedding):** Same approach as **Cogento_SelfHosted** — compose only sets the image tag (`PROGENTO_IMAGE_TAG`, default **`latest`**). Publish **`latest` as a multi-arch manifest** (amd64 + arm64) with **`Progento/registry/build-push.sh`** so Apple Silicon pulls native arm64 with no `platform:` lines. If your registry only has amd64 on `latest`, either re-push with the default multi-arch build or set **`PROGENTO_IMAGE_TAG=latest-arm64`** after publishing that tag.
 
 ## Prerequisites
 
@@ -32,8 +32,6 @@ Run [Progento](https://github.com/stefano-edgible/Progento) by pulling pre-built
    ```
    Edit `.env` if needed (`PROGENTO_DATA_ROOT`, `POSTGRES_PASSWORD`, etc.).
 
-   **Apple Silicon (M1/M2/M3):** With the current compose files you usually **do not** need to change anything: Progento GHCR services default to **`linux/amd64`** so `docker compose pull` succeeds. For **faster native arm64** images, push `latest-arm64` from the Progento repo, then set **`PROGENTO_IMAGE_TAG=latest-arm64`** and **`PROGENTO_DOCKER_PLATFORM=linux/arm64`** in `.env`.
-
 3. **Create volume dirs and start (all services in Docker)**
    ```bash
    chmod +x *.sh
@@ -55,6 +53,7 @@ Run [Progento](https://github.com/stefano-edgible/Progento) by pulling pre-built
 | `start-external-embedding.sh` | Same but **embedding service runs on the host** (e.g. GPU). Set `EMBEDDING_SERVICE_URL` in `.env` (e.g. `http://host.docker.internal:8002`) |
 | `start-external-both.sh` | Both Ollama and embedding on the host |
 | `stop.sh` | Stop all Progento containers |
+| `sync-from-progento.sh` | Maintainer: copy `scripts/db/postgres-entrypoint-wrapper.sh` from the Progento repo (see **Maintainers** below) |
 
 ## Ports
 
@@ -69,9 +68,26 @@ Run [Progento](https://github.com/stefano-edgible/Progento) by pulling pre-built
 
 By default, data is stored under `./volumes/` (or `PROGENTO_DATA_ROOT` from `.env`). Use a dedicated path (e.g. `/data` on EC2) and set `PROGENTO_DATA_ROOT=/data` in `.env`; run **`sudo ./setup-volumes.sh`** from the repo so it creates `/data/volumes/...` with usable permissions.
 
+## PostgreSQL schema (no SQL bootstrap in this repo)
+
+Unlike **Cogento_SelfHosted** (which runs `bootstrap_shared_schema.sql` from `/docker-entrypoint-initdb.d/` when Postgres first starts), **Progento** creates tables from the **API** at runtime:
+
+- The official **`postgres:15`** image creates an empty database **`progento`** from `POSTGRES_DB` / user / password in compose.
+- On startup, **`progento-api`** calls **`init_db()`** in the app (`Progento/src/models/database.py`): SQLAlchemy **`create_all`** plus small inline migrations. That code ships **inside the GHCR API image**, so self-hosted does not need copied `.sql` files.
+
+You only need **`scripts/db/postgres-entrypoint-wrapper.sh`** here for bind-mount permissions (macOS / Linux); it is not schema.
+
+## Maintainers: `sync-from-progento.sh`
+
+**Cogento_SelfHosted** has **`sync-from-cogento.sh`** because nginx config and **Postgres bootstrap SQL** live in the main Cogento repo and are vendored into self-hosted. **Progento** schema lives in the API image, so there is less to sync.
+
+We still provide **`./sync-from-progento.sh`** to copy **`scripts/db/postgres-entrypoint-wrapper.sh`** from the **[Progento](https://github.com/stefano-edgible/Progento)** repo when you change it there (default source: **`../Progento`**). End users who only clone this repo do not need to run it.
+
 ## Images
 
 Images are pulled from **GitHub Container Registry** (`ghcr.io/stefano-edgible/progento-*`). Ensure `GHCR_OWNER` in `.env` matches (default: `stefano-edgible`).
 
-**Apple Silicon:** Default compose uses **`PROGENTO_DOCKER_PLATFORM=linux/amd64`** (implicit) so **`latest`** pulls and runs under emulation. For native arm64, after pushing **`latest-arm64`** with `registry/build-push.sh` and `DOCKER_PLATFORM=linux/arm64`, set **`PROGENTO_IMAGE_TAG=latest-arm64`** and **`PROGENTO_DOCKER_PLATFORM=linux/arm64`** in `.env`.
+**Multi-arch `latest` (recommended):** Run **`Progento/registry/build-push.sh`** with default settings — it pushes **`linux/amd64` and `linux/arm64`** under **`latest`**, like a typical Cogento-style registry. Then **`docker compose pull`** works on EC2 and Mac without extra env.
+
+**Legacy:** If `latest` is amd64-only, set **`PROGENTO_IMAGE_TAG=latest-arm64`** in `.env` after you have pushed that tag.
 

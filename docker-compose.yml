@@ -26,7 +26,6 @@ services:
 
   embedding:
     image: ghcr.io/${GHCR_OWNER:-stefano-edgible}/progento-embedding:${PROGENTO_IMAGE_TAG:-latest}
-    platform: ${PROGENTO_DOCKER_PLATFORM:-linux/amd64}
     container_name: progento-embedding
     ports:
       - "8002:8002"
@@ -102,7 +101,6 @@ services:
 
   api:
     image: ghcr.io/${GHCR_OWNER:-stefano-edgible}/progento-api:${PROGENTO_IMAGE_TAG:-latest}
-    platform: ${PROGENTO_DOCKER_PLATFORM:-linux/amd64}
     container_name: progento-api
     ports:
       - "8001:8000"
@@ -150,7 +148,6 @@ services:
 
   ui:
     image: ghcr.io/${GHCR_OWNER:-stefano-edgible}/progento-ui:${PROGENTO_IMAGE_TAG:-latest}
-    platform: ${PROGENTO_DOCKER_PLATFORM:-linux/amd64}
     container_name: progento-ui
     ports:
       - "3001:80"
