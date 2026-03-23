@@ -1,1 +1,4 @@
 .env
+# Local KBase bind list + generated compose fragment (paths are machine-specific)
+kbase.volumes
+docker-compose.kbase.generated.yml

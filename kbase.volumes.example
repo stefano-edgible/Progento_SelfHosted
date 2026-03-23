@@ -1,0 +1,9 @@
+# KBase bind mounts for progento-api (merged by all compose scenarios).
+# Copy to "kbase.volumes" and edit; then run: ./scripts/gen-kbase-compose.sh
+#
+# One line per mount, same syntax as Docker Compose "volumes:" entries.
+# Container path MUST be under /kbase/ so the API sees KBase-style paths.
+#
+# Examples (host paths are yours to choose):
+# /Users/you/projects/docs:/kbase/edgible_docs:ro
+# /data/corpus/product-help:/kbase/product_help:ro

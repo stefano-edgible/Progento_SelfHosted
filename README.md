@@ -34,7 +34,7 @@ Run [Progento](https://github.com/stefano-edgible/Progento) by pulling pre-built
 
 3. **Create volume dirs and start (all services in Docker)**
    ```bash
-   chmod +x *.sh
+   chmod +x *.sh scripts/gen-kbase-compose.sh
    chmod +x scripts/db/postgres-entrypoint-wrapper.sh
    sudo ./setup-volumes.sh
    ./start.sh
@@ -54,6 +54,8 @@ Run [Progento](https://github.com/stefano-edgible/Progento) by pulling pre-built
 | `start-external-both.sh` | Both Ollama and embedding on the host |
 | `stop.sh` | Stop all Progento containers |
 | `sync-from-progento.sh` | Maintainer: copy `scripts/db/postgres-entrypoint-wrapper.sh` from the Progento repo (see **Maintainers** below) |
+| `scripts/gen-kbase-compose.sh` | Build `docker-compose.kbase.generated.yml` from `kbase.volumes` (see **KBase bind mounts** above) |
+| `scripts/progento-compose.sh` | Sourced by `start*.sh`; merges `docker-compose.kbase.generated.yml` when present |
 
 ## Ports
 
@@ -67,6 +69,36 @@ Run [Progento](https://github.com/stefano-edgible/Progento) by pulling pre-built
 ## Data
 
 By default, data is stored under `./volumes/` (or `PROGENTO_DATA_ROOT` from `.env`). Use a dedicated path (e.g. `/data` on EC2) and set `PROGENTO_DATA_ROOT=/data` in `.env`; run **`sudo ./setup-volumes.sh`** from the repo so it creates `/data/volumes/...` with usable permissions.
+
+## KBase bind mounts (one list for every compose scenario)
+
+You may have several compose files (`docker-compose.yml`, `docker-compose.external-ollama.yml`, …). To avoid duplicating **`api`** volume lines in each file, use a **single mount list** and a **generated fragment**:
+
+1. Copy the example list:
+   ```bash
+   cp kbase.volumes.example kbase.volumes
+   ```
+2. Edit **`kbase.volumes`**: one line per bind mount, Docker-style. The **container** path must include **`:/kbase/`** (Progento’s KBase root inside the API container).
+   ```text
+   /absolute/path/on/host:/kbase/my_docs:ro
+   ```
+3. Generate the merge file:
+   ```bash
+   chmod +x scripts/gen-kbase-compose.sh
+   ./scripts/gen-kbase-compose.sh
+   ```
+   This writes **`docker-compose.kbase.generated.yml`** (gitignored).
+
+4. Start as usual: **`./start.sh`** or **`./start-external-ollama.sh`** (etc.). Those scripts **`source scripts/progento-compose.sh`** and, if the generated file exists, run:
+   ```bash
+   docker compose -f <scenario>.yml -f docker-compose.kbase.generated.yml ...
+   ```
+   Docker Compose **merges** `api.volumes` from both files, so KBase mounts apply to **every** scenario.
+
+5. In the Progento UI, add a repository whose path is **`/kbase/my_docs`** (or whatever suffix you used), then scan.
+
+- No **`kbase.volumes`** file → no extra fragment; behaviour unchanged.
+- Env **`KBASE_VOLUMES_FILE`** points to an alternate list path for **`gen-kbase-compose.sh`**.
 
 ## PostgreSQL schema (no SQL bootstrap in this repo)
 
