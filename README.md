@@ -2,7 +2,9 @@
 
 Run [Progento](https://github.com/stefano-edgible/Progento) by pulling pre-built images—no build required.
 
-**Platforms:** The same setup works on **Linux** (e.g. EC2) and **macOS** (Docker Desktop). On Linux, `sudo ./setup-volumes.sh` sets correct ownership for Postgres data; `chmod 777` on bind-mounted dirs helps when UIDs don’t match the host. On macOS, a **Postgres entrypoint wrapper** (`scripts/db/postgres-entrypoint-wrapper.sh`) fixes permissions inside the container before Postgres starts. Use **`PROGENTO_IMAGE_TAG=latest-arm64`** on Apple Silicon if you only use arm64-built images (see **Images** below).
+**Platforms:** The same setup works on **Linux** (e.g. EC2) and **macOS** (Docker Desktop). On Linux, `sudo ./setup-volumes.sh` sets correct ownership for Postgres data; `chmod 777` on bind-mounted dirs helps when UIDs don’t match the host. On macOS, a **Postgres entrypoint wrapper** (`scripts/db/postgres-entrypoint-wrapper.sh`) fixes permissions inside the container before Postgres starts.
+
+**GHCR images (api / ui / embedding):** Compose sets **`platform: linux/amd64`** by default so **Apple Silicon can pull `:latest`** (amd64-only manifests) and run via emulation. For **native arm64** images you pushed as `latest-arm64`, set in `.env`: **`PROGENTO_IMAGE_TAG=latest-arm64`** and **`PROGENTO_DOCKER_PLATFORM=linux/arm64`** (see **Images** below).
 
 ## Prerequisites
 
@@ -27,15 +29,19 @@ Run [Progento](https://github.com/stefano-edgible/Progento) by pulling pre-built
 2. **Create `.env`**
    ```bash
    cp .env.example .env
-   # Edit .env if needed (e.g. PROGENTO_DATA_ROOT=/data, POSTGRES_PASSWORD)
    ```
+   Edit `.env` if needed (`PROGENTO_DATA_ROOT`, `POSTGRES_PASSWORD`, etc.).
+
+   **Apple Silicon (M1/M2/M3):** With the current compose files you usually **do not** need to change anything: Progento GHCR services default to **`linux/amd64`** so `docker compose pull` succeeds. For **faster native arm64** images, push `latest-arm64` from the Progento repo, then set **`PROGENTO_IMAGE_TAG=latest-arm64`** and **`PROGENTO_DOCKER_PLATFORM=linux/arm64`** in `.env`.
 
 3. **Create volume dirs and start (all services in Docker)**
    ```bash
-   chmod +x *.sh scripts/db/*.sh
-   sudo ./setup-volumes.sh   # so Postgres (UID 999) can use the data dir on Linux; safe on macOS too
+   chmod +x *.sh
+   chmod +x scripts/db/postgres-entrypoint-wrapper.sh
+   sudo ./setup-volumes.sh
    ./start.sh
    ```
+   `sudo` sets ownership on the Postgres data dir on Linux; it is safe on macOS too. Do not paste comment text after `sudo` on the same line—run each command on its own line.
 
 4. **Open the app** at **http://localhost:3001** (or your host IP).
 
@@ -67,5 +73,5 @@ By default, data is stored under `./volumes/` (or `PROGENTO_DATA_ROOT` from `.en
 
 Images are pulled from **GitHub Container Registry** (`ghcr.io/stefano-edgible/progento-*`). Ensure `GHCR_OWNER` in `.env` matches (default: `stefano-edgible`).
 
-**Apple Silicon:** default images are tagged `latest` (amd64). If you build/push with `DOCKER_PLATFORM=linux/arm64` from the Progento repo (`registry/build-push.sh`), set **`PROGENTO_IMAGE_TAG=latest-arm64`** in `.env` before `docker compose pull`.
+**Apple Silicon:** Default compose uses **`PROGENTO_DOCKER_PLATFORM=linux/amd64`** (implicit) so **`latest`** pulls and runs under emulation. For native arm64, after pushing **`latest-arm64`** with `registry/build-push.sh` and `DOCKER_PLATFORM=linux/arm64`, set **`PROGENTO_IMAGE_TAG=latest-arm64`** and **`PROGENTO_DOCKER_PLATFORM=linux/arm64`** in `.env`.
 
