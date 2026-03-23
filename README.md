@@ -1,10 +1,10 @@
 # Progento Self-Hosted
 
-Run [Progento](https://github.com/stefano-edgible/Progento) by pulling pre-built images—no build required.
+Run this stack from **pre-built container images**—no local build required. You get a web UI, API, vector search (Weaviate), Postgres, optional in-Docker Ollama and embedding service, and tools to index your own docs and code (**KBase**).
 
 **Platforms:** The same setup works on **Linux** (e.g. EC2) and **macOS** (Docker Desktop). On Linux, `sudo ./setup-volumes.sh` sets correct ownership for Postgres data; `chmod 777` on bind-mounted dirs helps when UIDs don’t match the host. On macOS, a **Postgres entrypoint wrapper** (`scripts/db/postgres-entrypoint-wrapper.sh`) fixes permissions inside the container before Postgres starts.
 
-**GHCR images (api / ui / embedding):** Compose uses the image tag **`PROGENTO_IMAGE_TAG`** (default **`latest`**). For **Apple Silicon** and **Intel/AMD64** servers to use the same tag, publish **`latest` as a multi-arch manifest** (linux/amd64 + linux/arm64) with the **[Progento](https://github.com/stefano-edgible/Progento) `registry/build-push.sh`** script (default behaviour there). Then **`docker compose pull`** picks the right architecture automatically. If your registry only offers amd64 on **`latest`**, either re-push with multi-arch or set **`PROGENTO_IMAGE_TAG=latest-arm64`** after publishing an arm64-only tag.
+**Images (API / UI / embedding):** Compose uses **`PROGENTO_IMAGE_TAG`** (default **`latest`**) and **`GHCR_OWNER`** on GitHub Container Registry. When **`latest`** is published as a **multi-arch** manifest (linux/amd64 + linux/arm64), **`docker compose pull`** picks the right architecture automatically. If your registry only offers amd64 on **`latest`**, set **`PROGENTO_IMAGE_TAG=latest-arm64`** on Apple Silicon (after that tag exists). See **[Images](#images)** below.
 
 ## Prerequisites
 
@@ -30,7 +30,11 @@ Run [Progento](https://github.com/stefano-edgible/Progento) by pulling pre-built
    ```bash
    cp .env.example .env
    ```
-   Edit `.env` if needed (`PROGENTO_DATA_ROOT`, `POSTGRES_PASSWORD`, etc.).
+   Edit `.env` to match your environment. In particular, set **which pre-built images** to pull:
+   - **`PROGENTO_IMAGE_TAG`** — tag for API, UI, and embedding images (default **`latest`**). Use e.g. **`latest-arm64`** on Apple Silicon if your registry only publishes amd64 on `latest` (see **Images** below).
+   - **`GHCR_OWNER`** — GitHub org/user that owns the images on GHCR (default **`stefano-edgible`**); change if you use your own fork’s packages.
+
+   Also adjust **`PROGENTO_DATA_ROOT`**, **`POSTGRES_PASSWORD`**, and optional **`OLLAMA_URL`** / **`EMBEDDING_SERVICE_URL`** as needed.
 
 3. **Create volume dirs and start (all services in Docker)**
    ```bash
@@ -79,8 +83,8 @@ Without mounted paths + scan, queries have no indexed context. Optional: also ad
 | `start-external-ollama.sh` | Same but **Ollama runs on the host** (e.g. native install for GPU). Set `OLLAMA_URL` in `.env` (e.g. `http://host.docker.internal:11434`) |
 | `start-external-embedding.sh` | Same but **embedding service runs on the host** (e.g. GPU). Set `EMBEDDING_SERVICE_URL` in `.env` (e.g. `http://host.docker.internal:8002`) |
 | `start-external-both.sh` | Both Ollama and embedding on the host |
-| `stop.sh` | Stop all Progento containers |
-| `sync-from-progento.sh` | Maintainer: copy `scripts/db/postgres-entrypoint-wrapper.sh` from the Progento repo (see **Maintainers** below) |
+| `stop.sh` | Stop all stack containers |
+| `sync-from-progento.sh` | **Maintainers only:** refresh `scripts/db/postgres-entrypoint-wrapper.sh` from a local source checkout (see **Maintainers** below) |
 | `scripts/gen-kbase-compose.sh` | Build `docker-compose.kbase.generated.yml` from `kbase.volumes` (see **KBase bind mounts** above) |
 | `scripts/progento-compose.sh` | Sourced by `start*.sh`; merges `docker-compose.kbase.generated.yml` when present |
 
@@ -105,7 +109,7 @@ You may have several compose files (`docker-compose.yml`, `docker-compose.extern
    ```bash
    cp kbase.volumes.example kbase.volumes
    ```
-2. Edit **`kbase.volumes`**: one line per bind mount, Docker-style. The **container** path must include **`:/kbase/`** (Progento’s KBase root inside the API container).
+2. Edit **`kbase.volumes`**: one line per bind mount, Docker-style. The **container** path must include **`:/kbase/`** (the KBase root inside the API container).
    ```text
    /absolute/path/on/host:/kbase/my_docs:ro
    ```
@@ -116,7 +120,7 @@ You may have several compose files (`docker-compose.yml`, `docker-compose.extern
    ```
    when the generated file exists. Docker Compose **merges** `api.volumes` from both files.
 
-4. In the Progento UI, add a repository whose path is **`/kbase/my_docs`** (or whatever suffix you used), then scan.
+4. In the **web UI** (**Repositories**), add a repository whose path is **`/kbase/my_docs`** (or whatever suffix you used), then scan.
 
 - No **`kbase.volumes`** file → generator removes any stale **`docker-compose.kbase.generated.yml`**; behaviour matches stock compose.
 - To regenerate without starting the stack: **`./scripts/gen-kbase-compose.sh`**
@@ -133,13 +137,13 @@ There are **no** SQL init scripts in this repo for Postgres. Schema is applied w
 
 ## Maintainers: `sync-from-progento.sh`
 
-If you develop **[Progento](https://github.com/stefano-edgible/Progento)** and change **`scripts/db/postgres-entrypoint-wrapper.sh`** there, run **`./sync-from-progento.sh`** from this repo to refresh the copy here (default source: **`../Progento`**). Cloners who only use released images do **not** need this script.
+If you build or develop the **application that produces these images** and maintain **`scripts/db/postgres-entrypoint-wrapper.sh`** in that source tree, run **`PROGENTO_SOURCE=/path/to/source ./sync-from-progento.sh`** from **this** repo (see the script for defaults). **Anyone who only clones this repo and pulls published images does not need this.**
 
 ## Images
 
-Images are pulled from **GitHub Container Registry** (`ghcr.io/stefano-edgible/progento-*`). Ensure `GHCR_OWNER` in `.env` matches (default: `stefano-edgible`).
+Images are pulled from **GitHub Container Registry** (`ghcr.io/<GHCR_OWNER>/progento-*`). Set **`GHCR_OWNER`** in `.env` to match the org or user that publishes the packages (default: `stefano-edgible`).
 
-**Multi-arch `latest` (recommended):** From the Progento repo, run **`registry/build-push.sh`** with default settings — it pushes **`linux/amd64` and `linux/arm64`** under **`latest`**. Then **`docker compose pull`** works on typical cloud VMs and Apple Silicon without setting `platform:` in compose.
+**Multi-arch `latest` (recommended):** Prefer a **`latest`** tag that includes both **`linux/amd64`** and **`linux/arm64`** so **`docker compose pull`** works on typical cloud VMs and Apple Silicon without `platform:` overrides.
 
-**Legacy:** If `latest` is amd64-only, set **`PROGENTO_IMAGE_TAG=latest-arm64`** in `.env` after you have pushed that tag.
+**Legacy:** If `latest` is amd64-only, set **`PROGENTO_IMAGE_TAG=latest-arm64`** in `.env` after an arm64-specific tag is published.
 
