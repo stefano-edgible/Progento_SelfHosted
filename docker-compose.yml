@@ -115,6 +115,9 @@ services:
       - POSTGRES_URL=postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/progento
       - EMBEDDING_SERVICE_URL=http://embedding:8002
       - OLLAMA_MODEL=${OLLAMA_MODEL:-phi}
+      # Seconds: httpx read timeout when calling Ollama /api/generate. Raise if queries disconnect; any nginx in front must allow >= this.
+      - OLLAMA_CONNECT_TIMEOUT=${OLLAMA_CONNECT_TIMEOUT:-30}
+      - OLLAMA_READ_TIMEOUT=${OLLAMA_READ_TIMEOUT:-300}
       - REPOS_BASE_PATH=/app/code_repos
       - PROGENTO_MAX_CHUNK_SIZE=${PROGENTO_MAX_CHUNK_SIZE:-1500}
       - PROGENTO_MARKDOWN_CHUNK_SIZE=${PROGENTO_MARKDOWN_CHUNK_SIZE:-2000}
