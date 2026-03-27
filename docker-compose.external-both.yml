@@ -62,6 +62,9 @@ services:
   api:
     image: ghcr.io/${GHCR_OWNER:-stefano-edgible}/progento-api:${PROGENTO_IMAGE_TAG:-latest}
     container_name: progento-api
+    # Linux: without this, host.docker.internal may not resolve (OLLAMA_URL / EMBEDDING_SERVICE_URL).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8001:8000"
     volumes:

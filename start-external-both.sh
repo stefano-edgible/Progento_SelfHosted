@@ -7,6 +7,7 @@ cd "$SCRIPT_DIR"
 # shellcheck source=scripts/progento-compose.sh
 source "$SCRIPT_DIR/scripts/progento-compose.sh"
 [ -f .env ] && set -a && source .env && set +a
+"$SCRIPT_DIR/scripts/ensure-external-host-services.sh" both
 progento_compose docker-compose.external-both.yml pull
 progento_compose docker-compose.external-both.yml up -d
 echo "Progento starting (Ollama + embedding on host). UI: http://localhost:3001"

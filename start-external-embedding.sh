@@ -7,6 +7,7 @@ cd "$SCRIPT_DIR"
 # shellcheck source=scripts/progento-compose.sh
 source "$SCRIPT_DIR/scripts/progento-compose.sh"
 [ -f .env ] && set -a && source .env && set +a
+"$SCRIPT_DIR/scripts/ensure-external-host-services.sh" embedding
 progento_compose docker-compose.external-embedding.yml pull
 progento_compose docker-compose.external-embedding.yml up -d
 echo "Progento starting (embedding on host). UI: http://localhost:3001"

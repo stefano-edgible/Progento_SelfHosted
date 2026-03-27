@@ -62,6 +62,13 @@ Pull at least one model into the **same** Ollama instance the API uses (`OLLAMA_
 | **In Docker** (default `./start.sh` — service `ollama`, container **`progento-ollama`**) | `docker exec -it progento-ollama ollama pull phi` |
 | **From the compose project directory** (alternative) | `docker compose exec ollama ollama pull phi` |
 | **On the host** (`./start-external-ollama.sh`, with `OLLAMA_URL=http://host.docker.internal:11434` on macOS/Windows, or your host LAN IP on Linux) | On the host: `ollama pull phi` |
+
+**If `/api/health/ollama` says unreachable** with `OLLAMA_URL=http://host.docker.internal:11434`:
+
+1. **Ollama running?** On the host: `curl -sS http://127.0.0.1:11434/api/tags | head`
+2. **Listen address:** If Ollama only binds to loopback, Docker may not reach it via `host.docker.internal`. Set **`OLLAMA_HOST=0.0.0.0:11434`** (or `0.0.0.0` per Ollama’s docs) so it listens on all interfaces, then restart Ollama.
+3. **Linux:** Compose files for external Ollama/embedding add **`extra_hosts: host.docker.internal:host-gateway`** on **`api`**. Recreate the API container: `docker compose ... up -d --force-recreate api`. If it still fails, set **`OLLAMA_URL=http://172.17.0.1:11434`** (Docker bridge gateway; your network may differ) or your machine’s LAN IP.
+4. **From inside the API container:** `docker exec progento-api wget -qO- http://host.docker.internal:11434/api/tags` — should return JSON when networking is correct.
 | **Remote URL** (`OLLAMA_URL=https://…`) | Pull on that server or follow the provider’s docs; set **`OLLAMA_API_KEY`** in `.env` if required |
 
 Use any name from the [Ollama library](https://ollama.com/library); align with **`OLLAMA_MODEL`** in `.env` if you set a default. Check **`GET http://localhost:8001/api/health/ollama`** (or your API port) — `models` should list the tags you pulled.
@@ -80,13 +87,16 @@ Without mounted paths + scan, queries have no indexed context. Optional: also ad
 |--------|-------------|
 | `setup-volumes.sh` | Create `volumes/*` under `PROGENTO_DATA_ROOT`. Run with **`sudo`** so Postgres can write; run once or after `rm -rf volumes`. |
 | `start.sh` | Start full stack (Ollama + embedding + Weaviate + Postgres + API + UI) in Docker |
-| `start-external-ollama.sh` | Same but **Ollama runs on the host** (e.g. native install for GPU). Set `OLLAMA_URL` in `.env` (e.g. `http://host.docker.internal:11434`) |
-| `start-external-embedding.sh` | Same but **embedding service runs on the host** (e.g. GPU). Set `EMBEDDING_SERVICE_URL` in `.env` (e.g. `http://host.docker.internal:8002`) |
-| `start-external-both.sh` | Both Ollama and embedding on the host |
+| `start-external-ollama.sh` | Same but **Ollama runs on the host** (e.g. native install for GPU). Set `OLLAMA_URL` in `.env` (e.g. `http://host.docker.internal:11434`). Before compose, **`scripts/ensure-external-host-services.sh`** tries to start **local** Ollama (macOS app, `ollama serve`, or `systemctl`; see below). |
+| `start-external-embedding.sh` | Same but **embedding service runs on the host** (e.g. GPU). Set `EMBEDDING_SERVICE_URL` in `.env`. Probes **`/health`**; optional **`PROGENTO_EMBEDDING_START_CMD`** runs if embedding is down. |
+| `start-external-both.sh` | Both Ollama and embedding on the host (runs the helper for **both** before compose). |
 | `stop.sh` | Stop all stack containers |
 | `sync-from-progento.sh` | **Maintainers only:** refresh `scripts/db/postgres-entrypoint-wrapper.sh` from a local source checkout (see **Maintainers** below) |
 | `scripts/gen-kbase-compose.sh` | Build `docker-compose.kbase.generated.yml` from `kbase.volumes` (see **KBase bind mounts** above) |
 | `scripts/progento-compose.sh` | Sourced by `start*.sh`; merges `docker-compose.kbase.generated.yml` when present |
+| `scripts/ensure-external-host-services.sh` | Best-effort **host** Ollama/embedding before external compose (not a full service manager). **`PROGENTO_AUTO_START_EXTERNAL=0`** disables it. Remote **`OLLAMA_URL`** hosts are not started—only probed/skipped. |
+
+**External stack auto-start (limitations):** Host installs vary (brew vs systemd, GPU wrappers), so the helper only does safe tries: open **Ollama.app** on macOS, run **`ollama serve`** in the background if `ollama` is on `PATH`, or **`systemctl start ollama`**. Embedding is not auto-started unless you set **`PROGENTO_EMBEDDING_START_CMD`** (e.g. `uvicorn` or a one-liner that binds `:8002`). If you prefer everything in containers, use **`./start.sh`** instead.
 
 ## Ports
 
@@ -146,4 +156,3 @@ Images are pulled from **GitHub Container Registry** (`ghcr.io/<GHCR_OWNER>/prog
 **Multi-arch `latest` (recommended):** Prefer a **`latest`** tag that includes both **`linux/amd64`** and **`linux/arm64`** so **`docker compose pull`** works on typical cloud VMs and Apple Silicon without `platform:` overrides.
 
 **Legacy:** If `latest` is amd64-only, set **`PROGENTO_IMAGE_TAG=latest-arm64`** in `.env` after an arm64-specific tag is published.
-
