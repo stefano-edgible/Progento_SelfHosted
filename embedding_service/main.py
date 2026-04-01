@@ -12,13 +12,9 @@ import gc
 
 
 def _configure_logging():
-    """EMBEDDING_LOG_LEVEL or LOG_LEVEL: DEBUG, INFO, WARNING, ERROR (default WARNING for quiet stdout)."""
+    """EMBEDDING_LOG_LEVEL only (default WARNING). Do not use host .env LOG_LEVEL=INFO — that is for the API container."""
     import os as _os
-    level_name = (
-        _os.getenv("EMBEDDING_LOG_LEVEL")
-        or _os.getenv("LOG_LEVEL")
-        or "WARNING"
-    ).upper()
+    level_name = (_os.getenv("EMBEDDING_LOG_LEVEL") or "WARNING").upper()
     level = getattr(logging, level_name, logging.WARNING)
     logging.basicConfig(
         level=level,
@@ -300,6 +296,11 @@ if __name__ == "__main__":
     # Access logs off by default (API polls /health, /models/* often). EMBEDDING_ACCESS_LOG=1 to enable.
     _al = os.getenv("EMBEDDING_ACCESS_LOG", "0").lower() in ("1", "true", "yes")
     _lv = (os.getenv("UVICORN_LOG_LEVEL") or os.getenv("EMBEDDING_LOG_LEVEL") or "warning").lower()
+    if not _al:
+        _acc = logging.getLogger("uvicorn.access")
+        _acc.disabled = True
+        _acc.propagate = False
+        _acc.handlers.clear()
     uvicorn.run(
         app,
         host="0.0.0.0",
