@@ -5,10 +5,13 @@
 # Reads OLLAMA_URL / EMBEDDING_SERVICE_URL from the environment (load .env before calling).
 #
 # PROGENTO_AUTO_START_EXTERNAL=0 — skip all probes and start attempts (default is 1).
-# PROGENTO_EMBEDDING_START_CMD — if set and embedding is down, runs via: bash -lc "$PROGENTO_EMBEDDING_START_CMD"
+# PROGENTO_EMBEDDING_START_CMD — if set and embedding is down, runs from this repo root via bash -c (see script body)
 #
 # Usage (from repo root): scripts/ensure-external-host-services.sh ollama|embedding|both
 set -euo pipefail
+
+# Repo root (Progento_SelfHosted). Embedding start cmd resolves relative paths from here (e.g. ../Progento/embedding_service).
+_SELFHOSTED_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 _have_curl() { command -v curl >/dev/null 2>&1; }
 _have_wget() { command -v wget >/dev/null 2>&1; }
@@ -120,14 +123,14 @@ _try_start_embedding() {
   if [[ -n "${PROGENTO_EMBEDDING_START_CMD:-}" ]]; then
     echo "ensure-external-host-services: Embedding not reachable — running PROGENTO_EMBEDDING_START_CMD…" >&2
     _emb_log="${TMPDIR:-/tmp}/progento-embedding.log"
-    (bash -lc "$PROGENTO_EMBEDDING_START_CMD" >>"$_emb_log" 2>&1 &)
+    (cd "$_SELFHOSTED_ROOT" && bash -c "$PROGENTO_EMBEDDING_START_CMD" >>"$_emb_log" 2>&1 &)
     echo "ensure-external-host-services: embedding stdout/stderr → $_emb_log" >&2
     sleep 3
     _embedding_reachable && return 0
   fi
 
   echo "ensure-external-host-services: Embedding not reachable at http://${host}:${port}/health." >&2
-  echo "  Run the progento-embedding service on the host (e.g. Docker image ghcr.io/.../progento-embedding, or uvicorn in Progento/embedding_service)." >&2
+  echo "  Run embedding natively on the host (GPU): pip install -r embedding_service/requirements.txt then PROGENTO_EMBEDDING_START_CMD=./scripts/start-embedding-host.sh — or any command listening on port 8002." >&2
   echo "  Optional: set PROGENTO_EMBEDDING_START_CMD in .env to a shell command that starts it." >&2
   return 1
 }

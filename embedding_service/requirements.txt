@@ -1,0 +1,18 @@
+# Embedding Service Dependencies
+# Optimized for M4 chip with Metal Performance Shaders (MPS)
+
+# Web Framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+
+# Embeddings (PyTorch with MPS support)
+sentence-transformers>=2.2.0
+torch>=2.0.0  # Includes Metal/MPS support on macOS
+
+# Validation
+pydantic>=2.5.0
+
+# HTTP Client (optional, for health checks)
+httpx>=0.25.0
+
+
