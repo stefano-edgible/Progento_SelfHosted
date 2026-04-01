@@ -6,6 +6,10 @@
 #
 # PROGENTO_AUTO_START_EXTERNAL=0 — skip all probes and start attempts (default is 1).
 # PROGENTO_EMBEDDING_START_CMD — if set and embedding is down, runs from this repo root via bash -c (see script body)
+# PROGENTO_EMBEDDING_START_WAIT_SEC — max seconds to poll /health after auto-start (default 120; first model load is often slow).
+# PROGENTO_EMBEDDING_START_WAIT_INTERVAL — seconds between /health checks (default 3).
+# PROGENTO_OLLAMA_START_WAIT_SEC — max seconds to poll Ollama /api/tags after auto-start (default 90).
+# PROGENTO_OLLAMA_START_WAIT_INTERVAL — seconds between Ollama checks (default 3).
 #
 # Usage (from repo root): scripts/ensure-external-host-services.sh ollama|embedding|both
 set -euo pipefail
@@ -78,6 +82,39 @@ _embedding_loopback_port_open() {
   _embedding_reachable
 }
 
+# Poll until Ollama responds (first arg = max seconds).
+_wait_ollama_reachable() {
+  local max_sec="${1:-90}"
+  local interval="${PROGENTO_OLLAMA_START_WAIT_INTERVAL:-3}"
+  local elapsed=0
+  while [[ "$elapsed" -lt "$max_sec" ]]; do
+    if _ollama_reachable; then
+      [[ "$elapsed" -gt 0 ]] && echo "ensure-external-host-services: Ollama OK after ${elapsed}s." >&2
+      return 0
+    fi
+    sleep "$interval"
+    elapsed=$((elapsed + interval))
+  done
+  return 1
+}
+
+# Poll embedding /health until OK (PROGENTO_EMBEDDING_START_WAIT_SEC, default 120).
+_wait_embedding_reachable() {
+  local max_sec="${PROGENTO_EMBEDDING_START_WAIT_SEC:-120}"
+  local interval="${PROGENTO_EMBEDDING_START_WAIT_INTERVAL:-3}"
+  local elapsed=0
+  while [[ "$elapsed" -lt "$max_sec" ]]; do
+    if _embedding_reachable; then
+      [[ "$elapsed" -gt 0 ]] && echo "ensure-external-host-services: embedding /health OK after ${elapsed}s." >&2
+      return 0
+    fi
+    sleep "$interval"
+    elapsed=$((elapsed + interval))
+  done
+  return 1
+}
+
+
 _try_start_ollama() {
   local host port
   read -r host port <<<"$(_parse_http_host_port "${OLLAMA_URL:-http://127.0.0.1:11434}" 11434)"
@@ -94,24 +131,23 @@ _try_start_ollama() {
 
   if [[ "$(uname -s)" == "Darwin" ]] && command -v open >/dev/null 2>&1; then
     open -a Ollama 2>/dev/null || true
-    sleep 4
-    _ollama_reachable && return 0
+    echo "ensure-external-host-services: waiting for Ollama (up to ${PROGENTO_OLLAMA_START_WAIT_SEC:-90}s)…" >&2
+    _wait_ollama_reachable "${PROGENTO_OLLAMA_START_WAIT_SEC:-90}" && return 0
   fi
 
   if command -v ollama >/dev/null 2>&1; then
     if pgrep -f "[o]llama serve" >/dev/null 2>&1 || pgrep -x ollama >/dev/null 2>&1; then
-      sleep 2
-      _ollama_reachable && return 0
+      echo "ensure-external-host-services: ollama process present — waiting for API…" >&2
+      _wait_ollama_reachable "${PROGENTO_OLLAMA_START_WAIT_SEC:-90}" && return 0
     fi
     (OLLAMA_HOST="${OLLAMA_HOST:-0.0.0.0:11434}" ollama serve >>"${TMPDIR:-/tmp}/progento-ollama-serve.log" 2>&1 &)
-    sleep 3
-    _ollama_reachable && return 0
+    echo "ensure-external-host-services: started ollama serve — waiting for API (up to ${PROGENTO_OLLAMA_START_WAIT_SEC:-90}s)…" >&2
+    _wait_ollama_reachable "${PROGENTO_OLLAMA_START_WAIT_SEC:-90}" && return 0
   fi
 
   if command -v systemctl >/dev/null 2>&1; then
     systemctl start ollama 2>/dev/null || systemctl --user start ollama 2>/dev/null || true
-    sleep 2
-    _ollama_reachable && return 0
+    _wait_ollama_reachable "${PROGENTO_OLLAMA_START_WAIT_SEC:-60}" && return 0
   fi
 
   echo "ensure-external-host-services: Could not start Ollama automatically. Install/start Ollama on the host, then:" >&2
@@ -147,13 +183,20 @@ _try_start_embedding() {
       bash -c "$PROGENTO_EMBEDDING_START_CMD"
     ) &
     echo "ensure-external-host-services: embedding stdout/stderr → $_emb_log" >&2
-    sleep 3
-    _embedding_reachable && return 0
+    echo "ensure-external-host-services: waiting for /health (up to ${PROGENTO_EMBEDDING_START_WAIT_SEC:-120}s — first model load is often slow)…" >&2
+    sleep 2
+    if _wait_embedding_reachable; then
+      return 0
+    fi
+    echo "ensure-external-host-services: embedding still not healthy after ${PROGENTO_EMBEDDING_START_WAIT_SEC:-120}s." >&2
+    echo "  Check: tail -f $_emb_log" >&2
+    echo "  Increase wait: PROGENTO_EMBEDDING_START_WAIT_SEC=300 ./start-external-both.sh" >&2
   fi
 
   echo "ensure-external-host-services: Embedding not reachable at http://${host}:${port}/health." >&2
   echo "  Run embedding natively on the host (GPU): pip install -r embedding_service/requirements.txt then PROGENTO_EMBEDDING_START_CMD=./scripts/start-embedding-host.sh — or any command listening on port 8002." >&2
   echo "  Optional: set PROGENTO_EMBEDDING_START_CMD in .env to a shell command that starts it." >&2
+  echo "  Docker compose will still start; fix embedding before scanning." >&2
   return 1
 }
 
