@@ -98,6 +98,8 @@ Without mounted paths + scan, queries have no indexed context. Optional: also ad
 
 **External stack auto-start (limitations):** Host installs vary (brew vs systemd, GPU wrappers), so the helper only does safe tries: open **Ollama.app** on macOS, run **`ollama serve`** in the background if `ollama` is on `PATH`, or **`systemctl start ollama`**. Embedding is not auto-started unless you set **`PROGENTO_EMBEDDING_START_CMD`** (e.g. `uvicorn` or a one-liner that binds `:8002`). If you prefer everything in containers, use **`./start.sh`** instead.
 
+**Embedding logs:** When **`PROGENTO_EMBEDDING_START_CMD`** runs from the helper, stdout/stderr go to **`$TMPDIR/progento-embedding.log`** (or **`/tmp/progento-embedding.log`**) so your terminal stays clean—`tail -f` that file if you need traces. If you start embedding yourself, **access logs are off by default** (no `GET /models/...` lines); set **`EMBEDDING_ACCESS_LOG=1`** to enable them for debugging. Optional: **`UVICORN_LOG_LEVEL=warning`**, **`EMBEDDING_LOG_LEVEL=WARNING`** (see **`.env.example`**). Per-batch embedding work is logged at **DEBUG** only (not INFO).
+
 ## Ports
 
 - **3001** – UI (web)

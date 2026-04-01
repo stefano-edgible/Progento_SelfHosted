@@ -119,7 +119,9 @@ _try_start_embedding() {
 
   if [[ -n "${PROGENTO_EMBEDDING_START_CMD:-}" ]]; then
     echo "ensure-external-host-services: Embedding not reachable — running PROGENTO_EMBEDDING_START_CMD…" >&2
-    bash -lc "$PROGENTO_EMBEDDING_START_CMD" &
+    _emb_log="${TMPDIR:-/tmp}/progento-embedding.log"
+    (bash -lc "$PROGENTO_EMBEDDING_START_CMD" >>"$_emb_log" 2>&1 &)
+    echo "ensure-external-host-services: embedding stdout/stderr → $_emb_log" >&2
     sleep 3
     _embedding_reachable && return 0
   fi
