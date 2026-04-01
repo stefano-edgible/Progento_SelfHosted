@@ -91,7 +91,7 @@ Without mounted paths + scan, queries have no indexed context. Optional: also ad
 | `start-external-embedding.sh` | Same but **embedding service runs on the host** (e.g. GPU). Set `EMBEDDING_SERVICE_URL` in `.env`. Probes **`/health`**; optional **`PROGENTO_EMBEDDING_START_CMD`** runs if embedding is down. |
 | `start-external-both.sh` | Both Ollama and embedding on the host (runs the helper for **both** before compose). |
 | `stop.sh` | Stop all stack containers. If **`OLLAMA_URL`** or **`EMBEDDING_SERVICE_URL`** is set in `.env` (external stacks), also **best-effort stops host** Ollama/embedding for **local** URLs only. Disable: **`PROGENTO_STOP_EXTERNAL_HOST=0`**. |
-| `stop-external-both.sh` | Stop **only** host Ollama + embedding (same logic as the optional step in `stop.sh`; does not run `docker compose down`). |
+| `stop-external-both.sh` | Mirror of **`start-external-both.sh`**: **`docker compose … down`** for `docker-compose.external-both.yml` (+ kbase fragment), then **host** Ollama + embedding (local URLs only). |
 | `sync-from-progento.sh` | **Maintainers only:** refresh `scripts/db/postgres-entrypoint-wrapper.sh` from a local source checkout (see **Maintainers** below) |
 | `scripts/gen-kbase-compose.sh` | Build `docker-compose.kbase.generated.yml` from `kbase.volumes` (see **KBase bind mounts** above) |
 | `scripts/progento-compose.sh` | Sourced by `start*.sh`; merges `docker-compose.kbase.generated.yml` when present |
