@@ -21,4 +21,4 @@ From repo root (or use `./scripts/start-embedding-host.sh`, which `cd`s here):
 cd embedding_service && source .venv/bin/activate && python main.py
 ```
 
-Listens on **0.0.0.0:8002**. Env vars: `PROGENTO_EMBEDDING_MODEL`, `EMBEDDING_ACCESS_LOG`, `EMBEDDING_LOG_LEVEL`, `UVICORN_LOG_LEVEL` (see main.py and `../.env.example`).
+Listens on **0.0.0.0:8002**. By default **logging is WARNING** (quiet stdout); set **`EMBEDDING_LOG_LEVEL=INFO`** and/or **`UVICORN_LOG_LEVEL=info`** for startup and request detail. **`EMBEDDING_ACCESS_LOG=1`** enables per-request access lines.
