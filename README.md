@@ -90,11 +90,13 @@ Without mounted paths + scan, queries have no indexed context. Optional: also ad
 | `start-external-ollama.sh` | Same but **Ollama runs on the host** (e.g. native install for GPU). Set `OLLAMA_URL` in `.env` (e.g. `http://host.docker.internal:11434`). Before compose, **`scripts/ensure-external-host-services.sh`** tries to start **local** Ollama (macOS app, `ollama serve`, or `systemctl`; see below). |
 | `start-external-embedding.sh` | Same but **embedding service runs on the host** (e.g. GPU). Set `EMBEDDING_SERVICE_URL` in `.env`. Probes **`/health`**; optional **`PROGENTO_EMBEDDING_START_CMD`** runs if embedding is down. |
 | `start-external-both.sh` | Both Ollama and embedding on the host (runs the helper for **both** before compose). |
-| `stop.sh` | Stop all stack containers |
+| `stop.sh` | Stop all stack containers. If **`OLLAMA_URL`** or **`EMBEDDING_SERVICE_URL`** is set in `.env` (external stacks), also **best-effort stops host** Ollama/embedding for **local** URLs only. Disable: **`PROGENTO_STOP_EXTERNAL_HOST=0`**. |
+| `stop-external-both.sh` | Stop **only** host Ollama + embedding (same logic as the optional step in `stop.sh`; does not run `docker compose down`). |
 | `sync-from-progento.sh` | **Maintainers only:** refresh `scripts/db/postgres-entrypoint-wrapper.sh` from a local source checkout (see **Maintainers** below) |
 | `scripts/gen-kbase-compose.sh` | Build `docker-compose.kbase.generated.yml` from `kbase.volumes` (see **KBase bind mounts** above) |
 | `scripts/progento-compose.sh` | Sourced by `start*.sh`; merges `docker-compose.kbase.generated.yml` when present |
 | `scripts/ensure-external-host-services.sh` | Best-effort **host** Ollama/embedding before external compose (not a full service manager). **`PROGENTO_AUTO_START_EXTERNAL=0`** disables it. Remote **`OLLAMA_URL`** hosts are not started—only probed/skipped. |
+| `scripts/stop-external-host-services.sh` | Best-effort **stop** for host Ollama/embedding (`ollama|embedding|both`). Only when the URL maps to **127.0.0.1**. Embedding: matches Python/`main.py` on the port, or set **`PROGENTO_STOP_EMBEDDING_BY_PORT=1`** to kill whatever listens on the embedding port. |
 
 **External stack auto-start (limitations):** Host installs vary (brew vs systemd, GPU wrappers), so the helper only does safe tries: open **Ollama.app** on macOS, run **`ollama serve`** in the background if `ollama` is on `PATH`, or **`systemctl start ollama`**. Embedding is not auto-started unless you set **`PROGENTO_EMBEDDING_START_CMD`** (e.g. `uvicorn` or a one-liner that binds `:8002`). If you prefer everything in containers, use **`./start.sh`** instead.
 
