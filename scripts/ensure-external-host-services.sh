@@ -116,13 +116,19 @@ _try_start_embedding() {
     return 1
   fi
 
+  _emb_log="$_SELFHOSTED_ROOT/progento-embedding-host.log"
+
   if _embedding_reachable; then
+    if [[ -n "${PROGENTO_EMBEDDING_START_CMD:-}" ]]; then
+      echo "ensure-external-host-services: embedding already up on http://${host}:${port} — did not run PROGENTO_EMBEDDING_START_CMD (no log file from this script)." >&2
+      echo "ensure-external-host-services: stop the existing process to use auto-start, or tail logs wherever you launched it." >&2
+    fi
     return 0
   fi
 
   if [[ -n "${PROGENTO_EMBEDDING_START_CMD:-}" ]]; then
     echo "ensure-external-host-services: Embedding not reachable — running PROGENTO_EMBEDDING_START_CMD…" >&2
-    _emb_log="${TMPDIR:-/tmp}/progento-embedding.log"
+    : >>"$_emb_log"
     (
       cd "$_SELFHOSTED_ROOT" || exit 1
       exec >>"$_emb_log" 2>&1

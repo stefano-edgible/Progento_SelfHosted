@@ -11,3 +11,6 @@ source "$SCRIPT_DIR/scripts/progento-compose.sh"
 progento_compose docker-compose.external-both.yml pull
 progento_compose docker-compose.external-both.yml up -d
 echo "Progento starting (Ollama + embedding on host). UI: http://localhost:3001"
+if [[ -n "${PROGENTO_EMBEDDING_START_CMD:-}" ]]; then
+  echo "Host embedding auto-start log (only if this run started it): $SCRIPT_DIR/progento-embedding-host.log"
+fi

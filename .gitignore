@@ -13,3 +13,6 @@ docker-compose.kbase.generated.yml
 
 # OS / editor noise
 .DS_Store
+
+# Host embedding auto-start log
+progento-embedding-host.log
