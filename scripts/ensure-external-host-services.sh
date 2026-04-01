@@ -66,6 +66,18 @@ _embedding_reachable() {
   [[ "$code" == "200" ]]
 }
 
+# True if something accepts TCP on loopback:port (no HTTP — avoids uvicorn access lines on user TTY during probes).
+_embedding_loopback_port_open() {
+  local host port
+  read -r host port <<<"$(_parse_http_host_port "${EMBEDDING_SERVICE_URL:-http://127.0.0.1:8002}" 8002)"
+  [[ "$host" == "127.0.0.1" ]] || return 1
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c "import socket; s=socket.socket(); s.settimeout(1); s.connect(('127.0.0.1', int('$port'))); s.close()" 2>/dev/null
+    return $?
+  fi
+  _embedding_reachable
+}
+
 _try_start_ollama() {
   local host port
   read -r host port <<<"$(_parse_http_host_port "${OLLAMA_URL:-http://127.0.0.1:11434}" 11434)"
@@ -118,7 +130,7 @@ _try_start_embedding() {
 
   _emb_log="$_SELFHOSTED_ROOT/progento-embedding-host.log"
 
-  if _embedding_reachable; then
+  if _embedding_loopback_port_open; then
     if [[ -n "${PROGENTO_EMBEDDING_START_CMD:-}" ]]; then
       echo "ensure-external-host-services: embedding already up on http://${host}:${port} — did not run PROGENTO_EMBEDDING_START_CMD (no log file from this script)." >&2
       echo "ensure-external-host-services: stop the existing process to use auto-start, or tail logs wherever you launched it." >&2
