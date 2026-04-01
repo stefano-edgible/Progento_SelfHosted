@@ -2,7 +2,11 @@
 
 Native **FastAPI + sentence-transformers + PyTorch** so **Metal (macOS)** or **CUDA (Linux)** can run embeddings. This folder is a **copy** of `Progento/embedding_service`; refresh it when you upgrade Progento if behavior diverges.
 
-## One-time setup
+## Setup
+
+**Automatic (recommended):** from repo root, set `PROGENTO_EMBEDDING_START_CMD=./scripts/start-embedding-host.sh` in `.env`. The script **creates `embedding_service/.venv`** if needed and **`pip install -r requirements.txt`** if `fastapi` is missing, then starts the server.
+
+**Manual one-time:**
 
 ```bash
 cd embedding_service
@@ -11,11 +15,9 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Use the same venv whenever you start the service (or install into a global env you prefer).
-
 ## Run
 
-From repo root (or use `./scripts/start-embedding-host.sh`, which `cd`s here):
+From repo root (or use `./scripts/start-embedding-host.sh`):
 
 ```bash
 cd embedding_service && source .venv/bin/activate && python main.py
