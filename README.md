@@ -162,3 +162,4 @@ Images are pulled from **GitHub Container Registry** (`ghcr.io/<GHCR_OWNER>/prog
 **Multi-arch `latest` (recommended):** Prefer a **`latest`** tag that includes both **`linux/amd64`** and **`linux/arm64`** so **`docker compose pull`** works on typical cloud VMs and Apple Silicon without `platform:` overrides.
 
 **Legacy:** If `latest` is amd64-only, set **`PROGENTO_IMAGE_TAG=latest-arm64`** in `.env` after an arm64-specific tag is published.
+
